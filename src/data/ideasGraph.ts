@@ -35,4 +35,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["symbols", "research", "conversations", "system", "grimoire"],
     type: "resource",
   },
+  {
+    id: "cyberculture",
+    label: "Cyberculture",
+    description:
+      "Cyberculture is the global culture formed through networked computer and internet technologies, defined by digitally mediated practices, languages and social structures that transcend physical location, blur boundaries and evolve through decentralized, information-driven interaction in cyberspace.",
+    url: "",
+    tags: ["cyberspace", "internet", "decentralized", "computer"],
+    type: "concept",
+  },
 ];
