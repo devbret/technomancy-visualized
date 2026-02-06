@@ -12,6 +12,7 @@ type TagNode = {
 type GraphNode =
   | (IdeaNode & { nodeKind: "idea" })
   | (TagNode & { nodeKind: "tag" });
+
 type SimNode = d3.SimulationNodeDatum & GraphNode;
 
 type GraphLink = {
@@ -21,6 +22,15 @@ type GraphLink = {
   kind: "idea-tag" | "tag-tag";
   weight: number; // used for stroke/force strength
 };
+
+// D3-friendly link datum (source/target become SimNode once simulation runs)
+type LinkDatum = d3.SimulationLinkDatum<SimNode> & GraphLink;
+
+// Drag subject typing (no `any`)
+type DragSubject = SimNode | d3.SubjectPosition;
+
+type IdeaSimNode = d3.SimulationNodeDatum & (IdeaNode & { nodeKind: "idea" });
+type TagSimNode = d3.SimulationNodeDatum & (TagNode & { nodeKind: "tag" });
 
 export default function IdeasGraphView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +83,7 @@ export default function IdeasGraphView() {
 
   const { nodes, links } = useMemo(() => {
     // 1) Make idea sim nodes
-    const ideaSimNodes: SimNode[] = ideaNodes.map((n) => ({
+    const ideaSimNodes: IdeaSimNode[] = ideaNodes.map((n) => ({
       ...n,
       nodeKind: "idea",
     }));
@@ -82,7 +92,7 @@ export default function IdeasGraphView() {
     const tagSet = new Set<string>();
     for (const n of ideaNodes) for (const t of n.tags) tagSet.add(t);
 
-    const tagNodes: SimNode[] = Array.from(tagSet)
+    const tagNodes: TagSimNode[] = Array.from(tagSet)
       .sort((a, b) => a.localeCompare(b))
       .map((tag) => ({
         id: `tag:${tag}`,
@@ -93,16 +103,16 @@ export default function IdeasGraphView() {
       }));
 
     const tagIndex = new Map<string, string>(); // tag -> nodeId ("tag:xxx")
-    for (const tn of tagNodes) tagIndex.set((tn as any).tag, tn.id);
+    for (const tn of tagNodes) tagIndex.set(tn.tag, tn.id);
 
     // 3) Links: idea -> tag
-    const links: GraphLink[] = [];
+    const builtLinks: GraphLink[] = [];
     for (const idea of ideaNodes) {
       for (const tag of idea.tags) {
         const tagId = tagIndex.get(tag);
         if (!tagId) continue;
 
-        links.push({
+        builtLinks.push({
           id: `L:idea-tag:${idea.id}->${tagId}`,
           source: idea.id,
           target: tagId,
@@ -113,6 +123,7 @@ export default function IdeasGraphView() {
     }
 
     // 4) Links: tag <-> tag based on co-occurrence within the same idea
+    // NOTE: We still compute these, but we won't render them (see visibleLinks below).
     const pairCounts = new Map<string, number>();
     const pairKey = (a: string, b: string) =>
       a < b ? `${a}||${b}` : `${b}||${a}`;
@@ -136,7 +147,7 @@ export default function IdeasGraphView() {
       const bId = tagIndex.get(b);
       if (!aId || !bId) continue;
 
-      links.push({
+      builtLinks.push({
         id: `L:tag-tag:${aId}<->${bId}`,
         source: aId,
         target: bId,
@@ -147,7 +158,7 @@ export default function IdeasGraphView() {
 
     return {
       nodes: [...ideaSimNodes, ...tagNodes],
-      links,
+      links: builtLinks,
     };
   }, []);
 
@@ -237,7 +248,7 @@ export default function IdeasGraphView() {
         gRoot.attr("transform", event.transform.toString());
       });
 
-    svg.call(zoom as d3.ZoomBehavior<SVGSVGElement, unknown>);
+    svg.call(zoom);
 
     // ---- Simulation with links ----
     const sim = d3
@@ -245,10 +256,10 @@ export default function IdeasGraphView() {
       .force(
         "link",
         d3
-          .forceLink<SimNode, any>(links as any)
-          .id((d: any) => d.id)
-          .distance((l: any) => (l.kind === "tag-tag" ? 90 : 130))
-          .strength((l: any) => {
+          .forceLink<SimNode, LinkDatum>(links as LinkDatum[])
+          .id((d) => d.id)
+          .distance((l) => (l.kind === "tag-tag" ? 90 : 130))
+          .strength((l) => {
             if (l.kind === "tag-tag") return Math.min(0.4, 0.08 * l.weight);
             return 0.18;
           }),
@@ -261,12 +272,14 @@ export default function IdeasGraphView() {
       .force("x", d3.forceX(0).strength(0.03))
       .force("y", d3.forceY(0).strength(0.03));
 
-    // ---- Render links ----
-    const visibleLinks = links.filter((l) => l.kind !== "tag-tag");
+    // ---- Render links (hide tag-tag interconnections) ----
+    const visibleLinks: LinkDatum[] = (links as LinkDatum[]).filter(
+      (l) => l.kind !== "tag-tag",
+    );
 
     const linkSel = linkLayer
-      .selectAll<SVGLineElement, GraphLink>("line.link")
-      .data(visibleLinks, (d: any) => d.id)
+      .selectAll<SVGLineElement, LinkDatum>("line.link")
+      .data(visibleLinks, (d) => d.id)
       .join("line")
       .attr("class", "link")
       .attr("stroke", "rgba(255,255,255,0.10)")
@@ -281,12 +294,12 @@ export default function IdeasGraphView() {
 
     const nodeSel = nodeLayer
       .selectAll<SVGGElement, SimNode>("g.node")
-      .data(nodes, (d: any) => d.id)
+      .data(nodes, (d) => d.id)
       .join("g")
       .attr("class", "node")
       .style("cursor", (d) => (isClickableIdea(d) ? "pointer" : "default"))
       .on("click", (_event, d) => {
-        if (!isClickableIdea(d)) return; // <- tags + other idea types do nothing
+        if (!isClickableIdea(d)) return; // tags + other idea types do nothing
         setSelected(d);
       })
       .on("mouseenter", (event, d) => showTooltip(event as MouseEvent, d))
@@ -330,7 +343,6 @@ export default function IdeasGraphView() {
       .attr("stroke-width", 3);
 
     // Drag (pin after drag)
-    type DragSubject = SimNode | d3.SubjectPosition;
     const drag: d3.DragBehavior<SVGGElement, SimNode, DragSubject> = d3
       .drag<SVGGElement, SimNode>()
       .on("start", (event, d) => {
@@ -367,10 +379,10 @@ export default function IdeasGraphView() {
     // Tick updates
     sim.on("tick", () => {
       linkSel
-        .attr("x1", (d: any) => (d.source as SimNode).x ?? 0)
-        .attr("y1", (d: any) => (d.source as SimNode).y ?? 0)
-        .attr("x2", (d: any) => (d.target as SimNode).x ?? 0)
-        .attr("y2", (d: any) => (d.target as SimNode).y ?? 0);
+        .attr("x1", (d) => (d.source as SimNode).x ?? 0)
+        .attr("y1", (d) => (d.source as SimNode).y ?? 0)
+        .attr("x2", (d) => (d.target as SimNode).x ?? 0)
+        .attr("y2", (d) => (d.target as SimNode).y ?? 0);
 
       nodeSel.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
@@ -382,7 +394,7 @@ export default function IdeasGraphView() {
     };
   }, [nodes, links]);
 
-  // Right panel content: idea vs tag
+  // Right panel content: only concept/resource ideas
   const panel = useMemo(() => {
     if (!selected) return null;
 
@@ -485,43 +497,6 @@ export default function IdeasGraphView() {
                     >
                       {t}
                     </span>
-                  ))}
-                </div>
-              </>
-            ) : null}
-
-            {panel.relatedIdeas.length ? (
-              <>
-                <div
-                  style={{
-                    opacity: 0.8,
-                    fontSize: 13,
-                    marginTop: 14,
-                    marginBottom: 6,
-                  }}
-                >
-                  Ideas with this tag
-                </div>
-                <div
-                  style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                >
-                  {panel.relatedIdeas.map((i) => (
-                    <div
-                      key={i.id}
-                      style={{
-                        padding: 10,
-                        borderRadius: 12,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.04)",
-                      }}
-                    >
-                      <div style={{ fontWeight: 700 }}>{i.label}</div>
-                      <div
-                        style={{ opacity: 0.85, fontSize: 13, marginTop: 4 }}
-                      >
-                        {i.description}
-                      </div>
-                    </div>
                   ))}
                 </div>
               </>
