@@ -44,4 +44,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["cyberspace", "internet", "decentralized", "computer"],
     type: "concept",
   },
+  {
+    id: "digital-immortality",
+    label: "Digital Immortality",
+    description:
+      "Digital immortality is the preservation or continuation of a person's identity through a data-driven digital representation that can exist as a static archive or as an evolving, learning entity, thereby raising ethical, human and data-protection questions.",
+    url: "",
+    tags: ["representation", "preservation", "experiences", "memories"],
+    type: "concept",
+  },
 ];
