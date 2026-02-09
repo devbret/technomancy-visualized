@@ -104,4 +104,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["gnosis", "consciousness", "results", "belief", "experience"],
     type: "concept",
   },
+  {
+    id: "technology",
+    label: "Technology",
+    description:
+      "The systematic and evolving application of knowledge which creates reusable, low-resistance ways to achieve practical goals and mediates how humans experience, organize and transform the world.",
+    url: "",
+    tags: ["experience", "knowledge", "innovation"],
+    type: "concept",
+  },
 ];
