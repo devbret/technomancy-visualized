@@ -45,7 +45,7 @@ export default function IdeasGraphView() {
         return "rgba(70, 210, 255, 0.85)"; // aqua
       case "resource":
         return "rgba(255, 210, 70, 0.85)"; // gold
-      case "observation":
+      case "person":
         return "rgba(190, 190, 190, 0.85)"; // neutral
       case "idea":
       default:
@@ -59,7 +59,7 @@ export default function IdeasGraphView() {
         return "rgba(70, 210, 255, 0.95)";
       case "resource":
         return "rgba(255, 210, 70, 0.95)";
-      case "observation":
+      case "person":
         return "rgba(220, 220, 220, 0.9)";
       case "idea":
       default:
@@ -73,7 +73,7 @@ export default function IdeasGraphView() {
         return "drop-shadow(0 0 6px rgba(70, 210, 255, 0.55))";
       case "resource":
         return "drop-shadow(0 0 6px rgba(255, 210, 70, 0.55))";
-      case "observation":
+      case "person":
         return "drop-shadow(0 0 6px rgba(220, 220, 220, 0.35))";
       case "idea":
       default:
@@ -333,7 +333,7 @@ export default function IdeasGraphView() {
           ? "rgba(255,255,255,0.8)"
           : "rgba(255,255,255,0.92)",
       )
-      .attr("font-size", (d) => (d.nodeKind === "tag" ? 11 : 12))
+      .attr("font-size", (d) => (d.nodeKind === "tag" ? 8 : 16))
       .attr(
         "font-family",
         "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
@@ -424,7 +424,7 @@ export default function IdeasGraphView() {
           width: "100%",
           overflow: "hidden",
           background: "rgba(0,0,0,0.0)",
-          position: "relative", // IMPORTANT: tooltip anchors to this
+          position: "relative",
         }}
       >
         <svg ref={svgRef} style={{ display: "block" }} />

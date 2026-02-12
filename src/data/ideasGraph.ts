@@ -4,7 +4,7 @@ export type IdeaNode = {
   description: string;
   url?: string;
   tags: string[];
-  type?: "concept" | "resource" | "observation" | "idea";
+  type?: "concept" | "resource" | "person" | "idea";
 };
 
 export const ideaNodes: IdeaNode[] = [
@@ -138,6 +138,122 @@ export const ideaNodes: IdeaNode[] = [
       "Software whose source code is openly accessible and licensed to guarantee users the freedom to run, study, modify and redistribute it, thereby promoting transparency, collaboration and shared technological advancement.",
     url: "",
     tags: ["flexibility", "freedom", "movement", "community"],
+    type: "concept",
+  },
+  {
+    id: "remixing",
+    label: "Remixing",
+    description:
+      "The creative practice of meaningfully re-appropriating and combining existing media from multiple sources into new forms, driving continuous cultural evolution through reinterpretation, collage and innovation.",
+    url: "",
+    tags: ["innovation", "memetics", "distribution"],
+    type: "concept",
+  },
+  {
+    id: "nmrdc",
+    label: "NMRDC",
+    description:
+      "The goal of this project is to create online resource center for researchers, students and those interested in investigating the intersection of new media, religion and digital culture.",
+    url: "https://www.digrel.com/",
+    tags: ["religion", "cyberspace", "culture"],
+    type: "resource",
+  },
+  {
+    id: "electronic-frontier-foundation",
+    label: "Electronic Frontier Foundation",
+    description:
+      "...is the leading nonprofit organization defending civil liberties in the digital world. Founded in 1990, EFF champions user privacy, free expression, and innovation through impact litigation, policy analysis, grassroots activism, and technology development.",
+    url: "https://www.eff.org/",
+    tags: ["liberty", "cyberspace", "technology"],
+    type: "resource",
+  },
+  {
+    id: "matrix-4-humans",
+    label: "Matrix 4 Humans",
+    description:
+      "We are providing unique insights into the background and framework of the Matrix movies.",
+    url: "https://matrix4humans.com/",
+    tags: ["gnosticism", "consciousness"],
+    type: "resource",
+  },
+  {
+    id: "psychonaut-guide",
+    label: "Psychonaut Guide",
+    description: "Explore psychedelics safely.",
+    url: "https://psychonaut.guide/",
+    tags: ["psychedelics", "psychonautics", "data"],
+    type: "resource",
+  },
+  {
+    id: "psychonautics",
+    label: "Psychonautics",
+    description:
+      "The intentional and responsible exploration of altered states of consciousness, in order to investigate the mind, spirituality and personal transformation through direct experience.",
+    url: "",
+    tags: ["psychonautics", "consciousness", "exploration"],
+    type: "concept",
+  },
+  {
+    id: "meditation",
+    label: "Meditation",
+    description:
+      "A transformative state of growth in which one moves beyond language and mental chatter, dissolves the barrier between observer and observed, and becomes consciously unified with existence itself.",
+    url: "",
+    tags: ["consciousness", "experience", "practice"],
+    type: "concept",
+  },
+  {
+    id: "synchronicity",
+    label: "Synchronicity",
+    description:
+      "The experience of meaningful coincidences in which seemingly unrelated internal and external events align in an acausal way, creating a sense of deeper interconnectedness often interpreted as a reaffirming signal from the universe or a higher power.",
+    url: "",
+    tags: ["interconnected", "carl-jung", "awakening", "enchantment"],
+    type: "concept",
+  },
+  {
+    id: "cyberpunk",
+    label: "Cyberpunk",
+    description:
+      "A science fiction subgenre set in a dystopian near future where advanced technology collides with social decay, inequality and rebellious anti-heroes navigating a 'low life, high tech' world.",
+    url: "",
+    tags: ["science-fiction", "cyberspace", "william-gibson", "technology"],
+    type: "concept",
+  },
+  {
+    id: "ghost-in-the-shell",
+    label: "Ghost In The Shell",
+    description:
+      "A cyberpunk film set in a hyper-connected, dystopian metropolis which explores the philosophical conflict between consciousness and the cybernetic body, questioning what it means to be human in a world of pervasive cyberization, artificial intelligence and malleable memory.",
+    url: "https://theghostintheshell.jp/en",
+    tags: ["cyberpunk", "artificial-intelligence", "cyberspace"],
+    type: "resource",
+  },
+  {
+    id: "psychedelics",
+    label: "Psychedelics",
+    description:
+      "Psychoactive substances which primarily act on serotonin 5-HT2A receptors to produce profound alterations in perception and cognition while promoting neural plasticity, enhanced learning and potential therapeutic benefits.",
+    url: "",
+    tags: ["psychonautics", "consciousness", "artifact", "terence-mckenna"],
+    type: "concept",
+  },
+  {
+    id: "divination",
+    label: "Divination",
+    description:
+      "An ancient, interpretive practice seeking insight into the past, present, future or hidden causes of events through symbolic methods and tools, functioning as a proactive dialogue between the conscious and unconscious distinct from mere fortune telling.",
+    url: "",
+    tags: ["randomness", "practice", "guidance"],
+    type: "concept",
+  },
+  {
+    id: "psychic-vampirism",
+    label: "Psychic Vampirism",
+    description:
+      "The phenomenon where an individual drains others' emotional or spiritual energy to sustain themselves, sometimes through manipulation or drama, though it may also be practiced ethically through consensual or ambient energy exchange.",
+    url: "",
+    tags: ["loosh", "feeding", "empaths"],
     type: "concept",
   },
 ];
