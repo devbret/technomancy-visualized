@@ -3,8 +3,8 @@ import * as d3 from "d3";
 import { ideaNodes, type IdeaNode } from "../data/ideasGraph";
 
 type TagNode = {
-  id: string; // e.g. "tag:systems"
-  label: string; // e.g. "systems"
+  id: string;
+  label: string;
   type: "tag";
   tag: string;
 };
@@ -20,13 +20,11 @@ type GraphLink = {
   source: string | SimNode;
   target: string | SimNode;
   kind: "idea-tag" | "tag-tag";
-  weight: number; // used for stroke/force strength
+  weight: number;
 };
 
-// D3-friendly link datum (source/target become SimNode once simulation runs)
 type LinkDatum = d3.SimulationLinkDatum<SimNode> & GraphLink;
 
-// Drag subject typing (no `any`)
 type DragSubject = SimNode | d3.SubjectPosition;
 
 type IdeaSimNode = d3.SimulationNodeDatum & (IdeaNode & { nodeKind: "idea" });
@@ -35,21 +33,19 @@ type TagSimNode = d3.SimulationNodeDatum & (TagNode & { nodeKind: "tag" });
 export default function IdeasGraphView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
-
   const [selected, setSelected] = useState<GraphNode | null>(null);
 
-  // Color helpers (concept vs resource vs others)
   const ideaFill = (t?: IdeaNode["type"]) => {
     switch (t) {
       case "concept":
-        return "rgba(70, 210, 255, 0.85)"; // aqua
+        return "rgba(70, 210, 255, 0.85)";
       case "resource":
-        return "rgba(255, 210, 70, 0.85)"; // gold
+        return "rgba(255, 210, 70, 0.85)";
       case "person":
-        return "rgba(190, 190, 190, 0.85)"; // neutral
+        return "rgba(190, 190, 190, 0.85)";
       case "idea":
       default:
-        return "rgba(220, 120, 255, 0.85)"; // magenta-ish
+        return "rgba(220, 120, 255, 0.85)";
     }
   };
 
@@ -82,13 +78,11 @@ export default function IdeasGraphView() {
   };
 
   const { nodes, links } = useMemo(() => {
-    // 1) Make idea sim nodes
     const ideaSimNodes: IdeaSimNode[] = ideaNodes.map((n) => ({
       ...n,
       nodeKind: "idea",
     }));
 
-    // 2) Build unique tags
     const tagSet = new Set<string>();
     for (const n of ideaNodes) for (const t of n.tags) tagSet.add(t);
 
@@ -102,16 +96,14 @@ export default function IdeasGraphView() {
         nodeKind: "tag",
       }));
 
-    const tagIndex = new Map<string, string>(); // tag -> nodeId ("tag:xxx")
+    const tagIndex = new Map<string, string>();
     for (const tn of tagNodes) tagIndex.set(tn.tag, tn.id);
 
-    // 3) Links: idea -> tag
     const builtLinks: GraphLink[] = [];
     for (const idea of ideaNodes) {
       for (const tag of idea.tags) {
         const tagId = tagIndex.get(tag);
         if (!tagId) continue;
-
         builtLinks.push({
           id: `L:idea-tag:${idea.id}->${tagId}`,
           source: idea.id,
@@ -122,14 +114,12 @@ export default function IdeasGraphView() {
       }
     }
 
-    // 4) Links: tag <-> tag based on co-occurrence within the same idea
-    // NOTE: We still compute these, but we won't render them (see visibleLinks below).
     const pairCounts = new Map<string, number>();
     const pairKey = (a: string, b: string) =>
       a < b ? `${a}||${b}` : `${b}||${a}`;
 
     for (const idea of ideaNodes) {
-      const tags = Array.from(new Set(idea.tags)); // de-dupe within node
+      const tags = Array.from(new Set(idea.tags));
       for (let i = 0; i < tags.length; i++) {
         for (let j = i + 1; j < tags.length; j++) {
           const k = pairKey(tags[i], tags[j]);
@@ -138,8 +128,7 @@ export default function IdeasGraphView() {
       }
     }
 
-    // Convert counts -> links (you can threshold to reduce clutter)
-    const CO_OCCURRENCE_THRESHOLD = 1; // bump to 2+ when you have more data
+    const CO_OCCURRENCE_THRESHOLD = 1;
     for (const [k, count] of pairCounts.entries()) {
       if (count < CO_OCCURRENCE_THRESHOLD) continue;
       const [a, b] = k.split("||");
@@ -152,7 +141,7 @@ export default function IdeasGraphView() {
         source: aId,
         target: bId,
         kind: "tag-tag",
-        weight: count, // higher count => stronger
+        weight: count,
       });
     }
 
@@ -170,8 +159,6 @@ export default function IdeasGraphView() {
     const svg = d3.select(svgEl);
     svg.selectAll("*").remove();
 
-    // --- HTML tooltip (inside container so positioning is easy) ---
-    // Remove any previous tooltip (in case of hot reload / effect reruns)
     d3.select(container).selectAll("div.hover-tooltip").remove();
 
     const tooltip = d3
@@ -240,7 +227,6 @@ export default function IdeasGraphView() {
     const linkLayer = gRoot.append("g").attr("class", "links");
     const nodeLayer = gRoot.append("g").attr("class", "nodes");
 
-    // Zoom/pan
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.25, 3])
@@ -250,7 +236,6 @@ export default function IdeasGraphView() {
 
     svg.call(zoom);
 
-    // ---- Simulation with links ----
     const sim = d3
       .forceSimulation<SimNode>(nodes)
       .force(
@@ -272,7 +257,6 @@ export default function IdeasGraphView() {
       .force("x", d3.forceX(0).strength(0.03))
       .force("y", d3.forceY(0).strength(0.03));
 
-    // ---- Render links (hide tag-tag interconnections) ----
     const visibleLinks: LinkDatum[] = (links as LinkDatum[]).filter(
       (l) => l.kind !== "tag-tag",
     );
@@ -286,7 +270,6 @@ export default function IdeasGraphView() {
       .attr("stroke-width", 1)
       .attr("stroke-linecap", "round");
 
-    // ---- Render nodes (group with circle + label) ----
     const isClickableIdea = (d: SimNode) =>
       d.nodeKind === "idea" &&
       ((d as IdeaNode).type === "concept" ||
@@ -297,31 +280,79 @@ export default function IdeasGraphView() {
       .data(nodes, (d) => d.id)
       .join("g")
       .attr("class", "node")
-      .style("cursor", (d) => (isClickableIdea(d) ? "pointer" : "default"))
+      .style("cursor", (d) => (isClickableIdea(d) ? "pointer" : "default"));
+
+    const nodeId = (n: string | SimNode) => (typeof n === "string" ? n : n.id);
+
+    const applyHoverHighlight = (focus: SimNode) => {
+      const focusId = focus.id;
+      const neighborIds = new Set<string>([focusId]);
+      const touchingLinkIds = new Set<string>();
+
+      for (const l of visibleLinks) {
+        const s = nodeId(l.source);
+        const t = nodeId(l.target);
+        if (s === focusId || t === focusId) {
+          neighborIds.add(s);
+          neighborIds.add(t);
+          touchingLinkIds.add(l.id);
+        }
+      }
+
+      nodeSel.style("opacity", (n) => (neighborIds.has(n.id) ? 1 : 0.18));
+
+      linkSel
+        .style("opacity", (l) => (touchingLinkIds.has(l.id) ? 1 : 0.06))
+        .attr("stroke", (l) =>
+          touchingLinkIds.has(l.id)
+            ? "rgba(255,255,255,0.55)"
+            : "rgba(255,255,255,0.10)",
+        )
+        .attr("stroke-width", (l) => (touchingLinkIds.has(l.id) ? 2.2 : 1));
+    };
+
+    const clearHoverHighlight = () => {
+      nodeSel.style("opacity", 1);
+      linkSel
+        .style("opacity", 1)
+        .attr("stroke", "rgba(255,255,255,0.10)")
+        .attr("stroke-width", 1);
+    };
+
+    nodeSel
       .on("click", (_event, d) => {
-        if (!isClickableIdea(d)) return; // tags + other idea types do nothing
+        if (!isClickableIdea(d)) return;
         setSelected(d);
       })
-      .on("mouseenter", (event, d) => showTooltip(event as MouseEvent, d))
-      .on("mousemove", (event, d) => moveTooltip(event as MouseEvent, d))
-      .on("mouseleave", () => hideTooltip());
+      .on("mouseenter", (event, d) => {
+        applyHoverHighlight(d);
+        showTooltip(event as MouseEvent, d);
+      })
+      .on("mousemove", (event, d) => {
+        moveTooltip(event as MouseEvent, d);
+      })
+      .on("mouseleave", () => {
+        clearHoverHighlight();
+        hideTooltip();
+      });
 
     nodeSel
       .append("circle")
       .attr("r", (d) => (d.nodeKind === "tag" ? 7 : 10))
-      .attr("fill", (d) => {
-        if (d.nodeKind === "tag") return "rgba(255,255,255,0.12)";
-        return ideaFill((d as IdeaNode).type);
-      })
-      .attr("stroke", (d) => {
-        if (d.nodeKind === "tag") return "rgba(255,255,255,0.35)";
-        return ideaStroke((d as IdeaNode).type);
-      })
+      .attr("fill", (d) =>
+        d.nodeKind === "tag"
+          ? "rgba(255,255,255,0.12)"
+          : ideaFill((d as IdeaNode).type),
+      )
+      .attr("stroke", (d) =>
+        d.nodeKind === "tag"
+          ? "rgba(255,255,255,0.35)"
+          : ideaStroke((d as IdeaNode).type),
+      )
       .attr("stroke-width", (d) => (d.nodeKind === "tag" ? 1.2 : 2))
-      .style("filter", (d) => {
-        if (d.nodeKind === "tag") return "none";
-        return ideaGlow((d as IdeaNode).type);
-      });
+      .style("filter", (d) =>
+        d.nodeKind === "tag" ? "none" : ideaGlow((d as IdeaNode).type),
+      );
 
     nodeSel
       .append("text")
@@ -342,11 +373,11 @@ export default function IdeasGraphView() {
       .attr("stroke", "rgba(0,0,0,0.65)")
       .attr("stroke-width", 3);
 
-    // Drag (pin after drag)
     const drag: d3.DragBehavior<SVGGElement, SimNode, DragSubject> = d3
       .drag<SVGGElement, SimNode>()
       .on("start", (event, d) => {
-        hideTooltip(); // avoid weirdness while dragging
+        hideTooltip();
+        clearHoverHighlight();
         if (!event.active) sim.alphaTarget(0.2).restart();
         d.fx = d.x;
         d.fy = d.y;
@@ -361,12 +392,10 @@ export default function IdeasGraphView() {
 
     nodeSel.call(drag);
 
-    // Responsive sizing + center force update
     const resize = () => {
       const rect = container.getBoundingClientRect();
       const width = Math.max(300, rect.width);
       const height = Math.max(300, rect.height);
-
       svg.attr("width", width).attr("height", height);
       sim.force("center", d3.forceCenter(width / 2, height / 2));
       sim.alpha(0.6).restart();
@@ -376,7 +405,6 @@ export default function IdeasGraphView() {
     ro.observe(container);
     resize();
 
-    // Tick updates
     sim.on("tick", () => {
       linkSel
         .attr("x1", (d) => (d.source as SimNode).x ?? 0)
@@ -394,16 +422,10 @@ export default function IdeasGraphView() {
     };
   }, [nodes, links]);
 
-  // Right panel content: only concept/resource ideas
   const panel = useMemo(() => {
     if (!selected) return null;
-
-    // No tag click effects / no tag details
     if (selected.nodeKind === "tag") return null;
-
     const idea = selected as IdeaNode & { nodeKind: "idea" };
-
-    // Only concepts/resources show panel content
     if (idea.type !== "concept" && idea.type !== "resource") return null;
 
     return {
@@ -454,7 +476,13 @@ export default function IdeasGraphView() {
             <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>
               {panel.title}
             </div>
-            <div style={{ opacity: 0.92, lineHeight: 1.5, marginBottom: 12 }}>
+            <div
+              style={{
+                opacity: 0.92,
+                lineHeight: 1.5,
+                marginBottom: 12,
+              }}
+            >
               {panel.description}
             </div>
 
@@ -480,10 +508,22 @@ export default function IdeasGraphView() {
 
             {panel.tags.length ? (
               <>
-                <div style={{ opacity: 0.8, fontSize: 13, marginBottom: 6 }}>
+                <div
+                  style={{
+                    opacity: 0.8,
+                    fontSize: 13,
+                    marginBottom: 6,
+                  }}
+                >
                   Tags
                 </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}
+                >
                   {panel.tags.map((t) => (
                     <span
                       key={t}

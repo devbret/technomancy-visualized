@@ -339,4 +339,38 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "magick",
+    label: "Magick",
+    description:
+      "The disciplined art and science of causing change in accordance with one's will by ritualizing intention and engaging hidden natural forces to shape experience, foster self-knowledge and harmonize with the deeper patterns of the universe.",
+    url: "",
+    tags: [
+      "occult",
+      "resonance",
+      "synchronicity",
+      "energy",
+      "cycles",
+      "evolution",
+    ],
+    type: "concept",
+  },
+  {
+    id: "technomancy",
+    label: "Technomancy",
+    description:
+      "A modern hybrid practice which uses technology as the medium for magick by treating digital tools, systems and media as energetic interfaces through which intention, perception and reality can be shaped for personal insight and societal transformation.",
+    url: "",
+    tags: ["technology", "magick", "occult", "cyberspace", "divination"],
+    type: "concept",
+  },
+  {
+    id: "history-of-technomancy",
+    label: "History Of Technomancy",
+    description:
+      "Traces humanity's long blending of ritual and machinery, from ancient temple engineering, occult-linked telecommunication pioneers and enchanted instruments like mirrors and automata, to the internet age where digital networks have become ritual spaces for collaborative, hybridized magickal practice.",
+    url: "",
+    tags: ["technomancy", "ritual", "occult", "technology", "ritual"],
+    type: "concept",
+  },
 ];
