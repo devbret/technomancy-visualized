@@ -101,7 +101,14 @@ export const ideaNodes: IdeaNode[] = [
     description:
       "A results-focused, non-dogmatic practice that treats belief as a flexible tool, prioritizes personal experience, technical skill, altered states of consciousness, eclectic experimentation and playful integration into everyday life to produce tangible change.",
     url: "",
-    tags: ["gnosis", "consciousness", "results", "belief", "experience"],
+    tags: [
+      "gnosis",
+      "consciousness",
+      "results",
+      "belief",
+      "experience",
+      "magick",
+    ],
     type: "concept",
   },
   {
@@ -371,6 +378,15 @@ export const ideaNodes: IdeaNode[] = [
       "Traces humanity's long blending of ritual and machinery, from ancient temple engineering, occult-linked telecommunication pioneers and enchanted instruments like mirrors and automata, to the internet age where digital networks have become ritual spaces for collaborative, hybridized magickal practice.",
     url: "",
     tags: ["technomancy", "ritual", "occult", "technology", "ritual"],
+    type: "concept",
+  },
+  {
+    id: "technopagan-agency",
+    label: "Technopagan Agency",
+    description:
+      "A hybrid agency emerging from the convergence of neopaganism, ecological consciousness and cyberculture, in which individuals embrace technology as both practical tool and sacred space, thus bridging spirituality and the material world.",
+    url: "",
+    tags: ["cyberculture", "convergence", "spirituality", "hybrid"],
     type: "concept",
   },
 ];

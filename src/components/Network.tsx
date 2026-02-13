@@ -252,7 +252,7 @@ export default function IdeasGraphView() {
       .force("charge", d3.forceManyBody().strength(-420))
       .force(
         "collide",
-        d3.forceCollide((d: SimNode) => (d.nodeKind === "tag" ? 18 : 26)),
+        d3.forceCollide((d: SimNode) => (d.nodeKind === "tag" ? 18 : 36)),
       )
       .force("x", d3.forceX(0).strength(0.03))
       .force("y", d3.forceY(0).strength(0.03));
@@ -338,7 +338,7 @@ export default function IdeasGraphView() {
 
     nodeSel
       .append("circle")
-      .attr("r", (d) => (d.nodeKind === "tag" ? 7 : 10))
+      .attr("r", (d) => (d.nodeKind === "tag" ? 6 : 13))
       .attr("fill", (d) =>
         d.nodeKind === "tag"
           ? "rgba(255,255,255,0.12)"
@@ -364,7 +364,7 @@ export default function IdeasGraphView() {
           ? "rgba(255,255,255,0.8)"
           : "rgba(255,255,255,0.92)",
       )
-      .attr("font-size", (d) => (d.nodeKind === "tag" ? 8 : 16))
+      .attr("font-size", (d) => (d.nodeKind === "tag" ? 8 : 20))
       .attr(
         "font-family",
         "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
