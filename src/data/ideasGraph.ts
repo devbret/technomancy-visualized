@@ -389,4 +389,19 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["cyberculture", "convergence", "spirituality", "hybrid"],
     type: "concept",
   },
+  {
+    id: "open-source-movement",
+    label: "Open Source Movement",
+    description:
+      "A community-driven approach to software development promoting transparent access to source code, collaborative contribution and licensing models that protect users' freedoms to use, study, modify, share and even fork software, fostering innovation, security and shared global technological advancement.",
+    url: "",
+    tags: [
+      "source-code",
+      "community",
+      "licensing",
+      "transparency",
+      "innovation",
+    ],
+    type: "concept",
+  },
 ];
