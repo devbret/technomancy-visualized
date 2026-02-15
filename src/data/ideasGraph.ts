@@ -404,4 +404,19 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "transhumanism",
+    label: "Transhumanism",
+    description:
+      "A philosophical and cultural movement which emphasizes humans can and should use advanced technology to transcend biological limitations via enhancing intelligence, eliminating suffering and ultimately evolving into a posthuman state beyond our current form.",
+    url: "",
+    tags: [
+      "extropy",
+      "augmentation",
+      "boundaries",
+      "singularity",
+      "immortality",
+    ],
+    type: "concept",
+  },
 ];
