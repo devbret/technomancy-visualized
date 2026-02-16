@@ -419,4 +419,13 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "cyborg-anthropology",
+    label: "Cyborg Anthropology",
+    description:
+      "The study of humans as hybrid beings exploring how technology, language, politics and imagination reshape social reality through partial, ironic and intimate couplings between humans, animals and machines.",
+    url: "",
+    tags: ["chimeras", "couplings", "hybrid", "technology"],
+    type: "concept",
+  },
 ];
