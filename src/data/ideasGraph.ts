@@ -4,7 +4,7 @@ export type IdeaNode = {
   description: string;
   url?: string;
   tags: string[];
-  type?: "concept" | "resource" | "person" | "idea";
+  type?: "concept" | "resource" | "person" | "location";
 };
 
 export const ideaNodes: IdeaNode[] = [
@@ -426,6 +426,15 @@ export const ideaNodes: IdeaNode[] = [
       "The study of humans as hybrid beings exploring how technology, language, politics and imagination reshape social reality through partial, ironic and intimate couplings between humans, animals and machines.",
     url: "",
     tags: ["chimeras", "couplings", "hybrid", "technology"],
+    type: "concept",
+  },
+  {
+    id: "emerging-global-vision",
+    label: "Emerging Global Vision",
+    description:
+      "As the center of world influence shifts from West to East, humanity must move beyond the historical imbalance between rational Western systems and intuitive Eastern perspectives toward a unified, balanced global consciousness which integrates logic, emotion, psyche and body into a more whole human experience.",
+    url: "",
+    tags: ["chaos", "rational", "imbalance", "chimeras"],
     type: "concept",
   },
 ];

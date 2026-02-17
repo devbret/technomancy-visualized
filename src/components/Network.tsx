@@ -43,7 +43,7 @@ export default function IdeasGraphView() {
         return "rgba(255, 210, 70, 0.85)";
       case "person":
         return "rgba(190, 190, 190, 0.85)";
-      case "idea":
+      case "location":
       default:
         return "rgba(220, 120, 255, 0.85)";
     }
@@ -57,7 +57,7 @@ export default function IdeasGraphView() {
         return "rgba(255, 210, 70, 0.95)";
       case "person":
         return "rgba(220, 220, 220, 0.9)";
-      case "idea":
+      case "location":
       default:
         return "rgba(220, 120, 255, 0.95)";
     }
@@ -71,7 +71,7 @@ export default function IdeasGraphView() {
         return "drop-shadow(0 0 6px rgba(255, 210, 70, 0.55))";
       case "person":
         return "drop-shadow(0 0 6px rgba(220, 220, 220, 0.35))";
-      case "idea":
+      case "location":
       default:
         return "drop-shadow(0 0 6px rgba(220, 120, 255, 0.45))";
     }
