@@ -505,42 +505,6 @@ export default function IdeasGraphView() {
                 Open link ↗
               </a>
             ) : null}
-
-            {panel.tags.length ? (
-              <>
-                <div
-                  style={{
-                    opacity: 0.8,
-                    fontSize: 13,
-                    marginBottom: 6,
-                  }}
-                >
-                  Tags
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 8,
-                  }}
-                >
-                  {panel.tags.map((t) => (
-                    <span
-                      key={t}
-                      style={{
-                        fontSize: 12,
-                        padding: "6px 10px",
-                        borderRadius: 999,
-                        border: "1px solid rgba(255,255,255,0.18)",
-                        background: "rgba(255,255,255,0.05)",
-                      }}
-                    >
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </>
-            ) : null}
           </>
         ) : (
           <div style={{ opacity: 0.85, lineHeight: 1.5 }}>
