@@ -437,4 +437,12 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["chaos", "rational", "imbalance", "chimeras"],
     type: "concept",
   },
+  {
+    id: "fusion-anomaly",
+    label: "Fusion Anomaly",
+    description: "This nexus is permanently morphing...",
+    url: "https://fusionanomaly.net/nodebase.html",
+    tags: ["memetics", "technoshamanism", "absurd"],
+    type: "resource",
+  },
 ];
