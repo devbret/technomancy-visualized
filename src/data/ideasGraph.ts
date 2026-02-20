@@ -454,4 +454,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["rave", "detroit", "plur", "techno"],
     type: "concept",
   },
+  {
+    id: "technological-re-enchantment",
+    label: "Technological Re-Enchantment",
+    description:
+      "Reframes technology as a modern continuation of Pythagorean-Platonic theurgy and technomancy, treating code and computation as pathways to transcendence within a hierarchically ordered, information-based universe where consciousness can evolve beyond material limitations.",
+    url: "",
+    tags: ["theurgy", "technomancy", "transhumanism", "transcendence"],
+    type: "concept",
+  },
 ];
