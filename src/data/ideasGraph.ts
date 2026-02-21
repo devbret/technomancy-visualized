@@ -463,4 +463,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["theurgy", "technomancy", "transhumanism", "transcendence"],
     type: "concept",
   },
+  {
+    id: "technomysticism",
+    label: "Technomysticism",
+    description:
+      "A worldview which treats technology as a medium for spiritual experience and self-transformation, integrating mysticism and digital culture to re-enchant the world through conscious, reverent engagement with technological systems.",
+    url: "",
+    tags: ["enchantment", "experience", "rave-culture", "computers"],
+    type: "concept",
+  },
 ];
