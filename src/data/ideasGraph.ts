@@ -68,7 +68,7 @@ export const ideaNodes: IdeaNode[] = [
     description:
       "Magick can be understood through multiple paradigms, each offering a different lens for explaining how intention creates change.",
     url: "",
-    tags: ["occult", "paradigms", "energy", "experience"],
+    tags: ["occult", "paradigms", "energy", "experience", "interpretation"],
     type: "concept",
   },
   {
@@ -469,7 +469,7 @@ export const ideaNodes: IdeaNode[] = [
     description:
       "A worldview which treats technology as a medium for spiritual experience and self-transformation, integrating mysticism and digital culture to re-enchant the world through conscious, reverent engagement with technological systems.",
     url: "",
-    tags: ["enchantment", "experience", "rave-culture", "computers"],
+    tags: ["enchantment", "experience", "rave", "computer"],
     type: "concept",
   },
   {
@@ -518,6 +518,21 @@ export const ideaNodes: IdeaNode[] = [
       "Intentionally designed spaces which utilize spatial, tactile and sensory stimuli to unfold a story over time and space, providing cognitive and emotional experiences that encourage users to reflect, question and debate.",
     url: "",
     tags: ["perception", "meaning-making", "experience", "content", "space"],
+    type: "concept",
+  },
+  {
+    id: "ancestrofuturism",
+    label: "Ancestrofuturism",
+    description:
+      "A Brazilian-born speculative practice developed by Fabiane M. Borges rejecting linear time and modernist notions of progress by remixing ancestral knowledge with science, fiction and technoshamanist ritual to generate alternative futures through hyperstitional imaginaries capable of becoming real.",
+    url: "",
+    tags: [
+      "technoshamanism",
+      "fusion",
+      "hyperstition",
+      "spectral-communities",
+      "diy",
+    ],
     type: "concept",
   },
 ];
