@@ -535,4 +535,19 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "technoshamanism",
+    label: "Technoshamanism",
+    description:
+      "A contemporary spiritual worldview and practice which fuses traditional shamanic principles with modern technologies like electronic music, virtual reality, digital networks and DIY media, treating technology not merely as a tool but as a living, symbiotic partner in the re-enchantment of consciousness and community in the digital age.",
+    url: "",
+    tags: [
+      "animism",
+      "urban-shamanism",
+      "altered-states-of-consciousness",
+      "rave",
+      "cyberspace",
+    ],
+    type: "concept",
+  },
 ];
