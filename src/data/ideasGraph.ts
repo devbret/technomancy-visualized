@@ -550,4 +550,13 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "psychosis",
+    label: "Psychosis",
+    description:
+      "A threshold experience in which the existing structure of identity and perception collapses, irreversibly transforming consciousness into a new and often expanded mode of meaning.",
+    url: "",
+    tags: ["psychotic-break", "threshold", "collapse", "shamanism", "rituals"],
+    type: "concept",
+  },
 ];
