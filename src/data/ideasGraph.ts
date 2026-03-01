@@ -559,4 +559,13 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["psychotic-break", "threshold", "collapse", "shamanism", "rituals"],
     type: "concept",
   },
+  {
+    id: "history-of-cyberpunk",
+    label: "History Of Cyberpunk",
+    description:
+      "Cyberpunk emerged from the New Wave science fiction movement of the 1960s-70s, evolved in the 1980s as a distinct subgenre exploring the relationship between human nature and rapidly advancing near-future technologies and was defined and popularized through works like Bruce Bethke's “Cyberpunk” and William Gibson's Neuromancer, as well as the film Blade Runner.",
+    url: "",
+    tags: ["cyberpunk", "philip-k-dick", "william-gibson", "new-wave"],
+    type: "concept",
+  },
 ];
