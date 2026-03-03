@@ -568,4 +568,19 @@ export const ideaNodes: IdeaNode[] = [
     tags: ["cyberpunk", "philip-k-dick", "william-gibson", "new-wave"],
     type: "concept",
   },
+  {
+    id: "ethics-of-technomancy",
+    label: "Ethics Of Technomancy",
+    description:
+      "The practice of engaging with digital and magickal systems intentionally, transparently and with respect for autonomy and consent, as well as recognizing all online interactions carry an energetic imprint thus ethical boundaries function as protective safeguards rather than restrictions.",
+    url: "",
+    tags: [
+      "technomancy",
+      "digital-privacy",
+      "energies",
+      "digital-spaces",
+      "authenticity",
+    ],
+    type: "concept",
+  },
 ];
