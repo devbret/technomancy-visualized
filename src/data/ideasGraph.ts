@@ -583,4 +583,19 @@ export const ideaNodes: IdeaNode[] = [
     ],
     type: "concept",
   },
+  {
+    id: "cybernetic-animism",
+    label: "Cybernetic Animism",
+    description:
+      "A worldview in which computers, algorithms, AI systems and digital environments possess an animating presence or agency and can be engaged with as active participants in a shared technological ecosystem rather than as passive tools.",
+    url: "",
+    tags: [
+      "urban-environments",
+      "technology",
+      "distributed-enhancements",
+      "technopaganism",
+      "interior-qualities",
+    ],
+    type: "concept",
+  },
 ];
