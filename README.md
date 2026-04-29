@@ -1,6 +1,6 @@
 # Technomancy Visualized
 
-![Screenshot from the application's main UI, showing a network of interconnected nodes.](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/b436229e-7ea0-4686-ad29-bf09f3673908.png)
+![Screenshot from the application's main UI, showing a network of interconnected nodes.](https://hosting.photobucket.com/bbcfb0d4-be20-44a0-94dc-65bff8947cf2/7dadeb89-13bb-4ac8-8375-83e1c9178aa4.png)
 
 Interlinks ideas about technology, consciousness, cyberculture and magick to explore how humans and machines co-evolve meaning, power and awareness in the global knowledge economy.
 
