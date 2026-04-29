@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { ideaNodes, type IdeaNode } from "../data/ideasGraph";
 
+type IdeaType = NonNullable<IdeaNode["type"]>;
+
 type TagNode = {
   id: string;
   label: string;
@@ -10,8 +12,8 @@ type TagNode = {
 };
 
 type GraphNode =
-  | (IdeaNode & { nodeKind: "idea" })
-  | (TagNode & { nodeKind: "tag" });
+  | (IdeaNode & { nodeKind: "idea"; searchMatch?: boolean })
+  | (TagNode & { nodeKind: "tag"; searchMatch?: boolean });
 
 type SimNode = d3.SimulationNodeDatum & GraphNode;
 
@@ -19,7 +21,7 @@ type GraphLink = {
   id: string;
   source: string | SimNode;
   target: string | SimNode;
-  kind: "idea-tag" | "tag-tag";
+  kind: "idea-tag";
   weight: number;
 };
 
@@ -27,13 +29,50 @@ type LinkDatum = d3.SimulationLinkDatum<SimNode> & GraphLink;
 
 type DragSubject = SimNode | d3.SubjectPosition;
 
-type IdeaSimNode = d3.SimulationNodeDatum & (IdeaNode & { nodeKind: "idea" });
-type TagSimNode = d3.SimulationNodeDatum & (TagNode & { nodeKind: "tag" });
+type IdeaSimNode = d3.SimulationNodeDatum &
+  (IdeaNode & { nodeKind: "idea"; searchMatch?: boolean });
+
+type TagSimNode = d3.SimulationNodeDatum &
+  (TagNode & { nodeKind: "tag"; searchMatch?: boolean });
+
+type IdeaTypeFilter = Record<IdeaType, boolean>;
+
+const DEFAULT_VISIBLE_TYPES: IdeaTypeFilter = {
+  concept: true,
+  resource: true,
+  person: true,
+  location: true,
+};
+
+const DEFAULT_ZOOM_SCALE = 0.33;
+const TAG_LABEL_ZOOM_THRESHOLD = 0.73;
+const FULL_IDEA_LABEL_ZOOM_THRESHOLD = 0.85;
+const TAG_DROPDOWN_ROW_HEIGHT = 38;
+const TAG_DROPDOWN_VISIBLE_ROWS = 10;
+
+const getIdeaType = (idea: IdeaNode): IdeaType => idea.type ?? "location";
+
+const truncateLabel = (label: string, maxLength = 26) => {
+  if (label.length <= maxLength) return label;
+  return `${label.slice(0, maxLength - 1)}…`;
+};
 
 export default function IdeasGraphView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const resetZoomRef = useRef<(() => void) | null>(null);
+  const tagDropdownRef = useRef<HTMLDivElement | null>(null);
+
   const [selected, setSelected] = useState<GraphNode | null>(null);
+
+  const [query, setQuery] = useState("");
+  const [selectedTag, setSelectedTag] = useState("all");
+  const [isTagDropdownOpen, setIsTagDropdownOpen] = useState(false);
+  const [hoveredTag, setHoveredTag] = useState<string | null>(null);
+  const [showTags, setShowTags] = useState(true);
+  const [visibleTypes, setVisibleTypes] = useState<IdeaTypeFilter>(
+    DEFAULT_VISIBLE_TYPES,
+  );
 
   const ideaFill = (t?: IdeaNode["type"]) => {
     switch (t) {
@@ -77,14 +116,101 @@ export default function IdeasGraphView() {
     }
   };
 
-  const { nodes, links } = useMemo(() => {
-    const ideaSimNodes: IdeaSimNode[] = ideaNodes.map((n) => ({
-      ...n,
-      nodeKind: "idea",
+  const allTags = useMemo(() => {
+    const tagSet = new Set<string>();
+
+    for (const idea of ideaNodes) {
+      for (const tag of idea.tags) {
+        tagSet.add(tag);
+      }
+    }
+
+    return Array.from(tagSet).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  const selectedTagLabel = selectedTag === "all" ? "All tags" : selectedTag;
+
+  const toggleType = (type: IdeaType) => {
+    setVisibleTypes((prev) => ({
+      ...prev,
+      [type]: !prev[type],
     }));
+  };
+
+  const resetControls = () => {
+    setQuery("");
+    setSelectedTag("all");
+    setIsTagDropdownOpen(false);
+    setHoveredTag(null);
+    setShowTags(true);
+    setVisibleTypes(DEFAULT_VISIBLE_TYPES);
+    setSelected(null);
+  };
+
+  const resetView = () => {
+    resetZoomRef.current?.();
+  };
+
+  useEffect(() => {
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!tagDropdownRef.current) return;
+
+      if (!tagDropdownRef.current.contains(event.target as Node)) {
+        setIsTagDropdownOpen(false);
+        setHoveredTag(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, []);
+
+  const { nodes, links } = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const filteredIdeas = ideaNodes.filter((idea) => {
+      const ideaType = getIdeaType(idea);
+      const matchesType = visibleTypes[ideaType];
+      const matchesTag =
+        selectedTag === "all" ? true : idea.tags.includes(selectedTag);
+
+      return matchesType && matchesTag;
+    });
+
+    const ideaSimNodes: IdeaSimNode[] = filteredIdeas.map((n) => {
+      const searchHaystack = [
+        n.label,
+        n.description,
+        getIdeaType(n),
+        n.url ?? "",
+        ...n.tags,
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return {
+        ...n,
+        type: getIdeaType(n),
+        nodeKind: "idea",
+        searchMatch:
+          normalizedQuery.length === 0
+            ? true
+            : searchHaystack.includes(normalizedQuery),
+      };
+    });
 
     const tagSet = new Set<string>();
-    for (const n of ideaNodes) for (const t of n.tags) tagSet.add(t);
+
+    if (showTags) {
+      for (const n of filteredIdeas) {
+        for (const t of n.tags) {
+          tagSet.add(t);
+        }
+      }
+    }
 
     const tagNodes: TagSimNode[] = Array.from(tagSet)
       .sort((a, b) => a.localeCompare(b))
@@ -94,62 +220,77 @@ export default function IdeasGraphView() {
         type: "tag",
         tag,
         nodeKind: "tag",
+        searchMatch:
+          normalizedQuery.length === 0
+            ? true
+            : tag.toLowerCase().includes(normalizedQuery),
       }));
 
     const tagIndex = new Map<string, string>();
-    for (const tn of tagNodes) tagIndex.set(tn.tag, tn.id);
 
-    const builtLinks: GraphLink[] = [];
-    for (const idea of ideaNodes) {
-      for (const tag of idea.tags) {
-        const tagId = tagIndex.get(tag);
-        if (!tagId) continue;
-        builtLinks.push({
-          id: `L:idea-tag:${idea.id}->${tagId}`,
-          source: idea.id,
-          target: tagId,
-          kind: "idea-tag",
-          weight: 1,
-        });
-      }
+    for (const tn of tagNodes) {
+      tagIndex.set(tn.tag, tn.id);
     }
 
-    const pairCounts = new Map<string, number>();
-    const pairKey = (a: string, b: string) =>
-      a < b ? `${a}||${b}` : `${b}||${a}`;
+    const builtLinks: GraphLink[] = [];
 
-    for (const idea of ideaNodes) {
-      const tags = Array.from(new Set(idea.tags));
-      for (let i = 0; i < tags.length; i++) {
-        for (let j = i + 1; j < tags.length; j++) {
-          const k = pairKey(tags[i], tags[j]);
-          pairCounts.set(k, (pairCounts.get(k) ?? 0) + 1);
+    if (showTags) {
+      for (const idea of filteredIdeas) {
+        for (const tag of idea.tags) {
+          const tagId = tagIndex.get(tag);
+
+          if (!tagId) continue;
+
+          builtLinks.push({
+            id: `L:idea-tag:${idea.id}->${tagId}`,
+            source: idea.id,
+            target: tagId,
+            kind: "idea-tag",
+            weight: 1,
+          });
         }
       }
     }
 
-    const CO_OCCURRENCE_THRESHOLD = 1;
-    for (const [k, count] of pairCounts.entries()) {
-      if (count < CO_OCCURRENCE_THRESHOLD) continue;
-      const [a, b] = k.split("||");
-      const aId = tagIndex.get(a);
-      const bId = tagIndex.get(b);
-      if (!aId || !bId) continue;
+    const graphNodes: SimNode[] = showTags
+      ? [...ideaSimNodes, ...tagNodes]
+      : ideaSimNodes;
 
-      builtLinks.push({
-        id: `L:tag-tag:${aId}<->${bId}`,
-        source: aId,
-        target: bId,
-        kind: "tag-tag",
-        weight: count,
-      });
+    if (normalizedQuery.length === 0) {
+      return {
+        nodes: graphNodes,
+        links: builtLinks,
+      };
+    }
+
+    const matchingNodeIds = new Set<string>();
+
+    for (const node of graphNodes) {
+      if (node.searchMatch) {
+        matchingNodeIds.add(node.id);
+      }
+    }
+
+    for (const link of builtLinks) {
+      const sourceId =
+        typeof link.source === "string" ? link.source : link.source.id;
+      const targetId =
+        typeof link.target === "string" ? link.target : link.target.id;
+
+      if (matchingNodeIds.has(sourceId) || matchingNodeIds.has(targetId)) {
+        matchingNodeIds.add(sourceId);
+        matchingNodeIds.add(targetId);
+      }
     }
 
     return {
-      nodes: [...ideaSimNodes, ...tagNodes],
+      nodes: graphNodes.map((node) => ({
+        ...node,
+        searchMatch: matchingNodeIds.has(node.id),
+      })),
       links: builtLinks,
     };
-  }, []);
+  }, [query, selectedTag, showTags, visibleTypes]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -189,7 +330,8 @@ export default function IdeasGraphView() {
 
     const showTooltip = (event: MouseEvent, d: SimNode) => {
       if (d.nodeKind !== "idea") return;
-      const t = (d as IdeaNode).type;
+
+      const t = getIdeaType(d as IdeaNode);
       if (t !== "concept" && t !== "resource") return;
 
       const rect = container.getBoundingClientRect();
@@ -207,7 +349,8 @@ export default function IdeasGraphView() {
 
     const moveTooltip = (event: MouseEvent, d: SimNode) => {
       if (d.nodeKind !== "idea") return;
-      const t = (d as IdeaNode).type;
+
+      const t = getIdeaType(d as IdeaNode);
       if (t !== "concept" && t !== "resource") return;
 
       const rect = container.getBoundingClientRect();
@@ -227,14 +370,70 @@ export default function IdeasGraphView() {
     const linkLayer = gRoot.append("g").attr("class", "links");
     const nodeLayer = gRoot.append("g").attr("class", "nodes");
 
+    let currentZoomScale = DEFAULT_ZOOM_SCALE;
+    let hoveredNodeId: string | null = null;
+
+    const updateLabelVisibility = (zoomScale: number) => {
+      currentZoomScale = zoomScale;
+
+      nodeLayer
+        .selectAll<SVGTextElement, SimNode>("text.node-label")
+        .text((d) => {
+          if (d.nodeKind === "tag") return d.label;
+
+          return zoomScale >= FULL_IDEA_LABEL_ZOOM_THRESHOLD
+            ? d.label
+            : truncateLabel(d.label, 18);
+        })
+        .attr("font-size", (d) => {
+          if (d.nodeKind === "tag") return zoomScale >= 1.6 ? 9 : 8;
+          return zoomScale >= FULL_IDEA_LABEL_ZOOM_THRESHOLD ? 18 : 14;
+        })
+        .style("opacity", (d) => {
+          if (d.nodeKind === "tag") {
+            return zoomScale >= TAG_LABEL_ZOOM_THRESHOLD ||
+              d.id === hoveredNodeId
+              ? 1
+              : 0;
+          }
+
+          if (zoomScale < 0.45) return 0.55;
+          if (zoomScale < FULL_IDEA_LABEL_ZOOM_THRESHOLD) return 0.78;
+
+          return 1;
+        })
+        .style("pointer-events", "none");
+    };
+
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.25, 3])
       .on("zoom", (event) => {
         gRoot.attr("transform", event.transform.toString());
+        updateLabelVisibility(event.transform.k);
       });
 
     svg.call(zoom);
+
+    const getDefaultZoomTransform = () => {
+      const rect = container.getBoundingClientRect();
+      const width = Math.max(300, rect.width);
+      const height = Math.max(300, rect.height);
+
+      return d3.zoomIdentity
+        .translate(
+          (width * (1 - DEFAULT_ZOOM_SCALE)) / 2,
+          (height * (1 - DEFAULT_ZOOM_SCALE)) / 2,
+        )
+        .scale(DEFAULT_ZOOM_SCALE);
+    };
+
+    resetZoomRef.current = () => {
+      svg
+        .transition()
+        .duration(500)
+        .call(zoom.transform, getDefaultZoomTransform());
+    };
 
     const sim = d3
       .forceSimulation<SimNode>(nodes)
@@ -243,11 +442,8 @@ export default function IdeasGraphView() {
         d3
           .forceLink<SimNode, LinkDatum>(links as LinkDatum[])
           .id((d) => d.id)
-          .distance((l) => (l.kind === "tag-tag" ? 90 : 130))
-          .strength((l) => {
-            if (l.kind === "tag-tag") return Math.min(0.4, 0.08 * l.weight);
-            return 0.18;
-          }),
+          .distance(130)
+          .strength(0.18),
       )
       .force("charge", d3.forceManyBody().strength(-420))
       .force(
@@ -257,9 +453,7 @@ export default function IdeasGraphView() {
       .force("x", d3.forceX(0).strength(0.03))
       .force("y", d3.forceY(0).strength(0.03));
 
-    const visibleLinks: LinkDatum[] = (links as LinkDatum[]).filter(
-      (l) => l.kind !== "tag-tag",
-    );
+    const visibleLinks: LinkDatum[] = links as LinkDatum[];
 
     const linkSel = linkLayer
       .selectAll<SVGLineElement, LinkDatum>("line.link")
@@ -270,10 +464,13 @@ export default function IdeasGraphView() {
       .attr("stroke-width", 1)
       .attr("stroke-linecap", "round");
 
-    const isClickableIdea = (d: SimNode) =>
-      d.nodeKind === "idea" &&
-      ((d as IdeaNode).type === "concept" ||
-        (d as IdeaNode).type === "resource");
+    const isClickableIdea = (d: SimNode) => {
+      if (d.nodeKind !== "idea") return false;
+
+      const ideaType = getIdeaType(d as IdeaNode);
+
+      return ideaType === "concept" || ideaType === "resource";
+    };
 
     const nodeSel = nodeLayer
       .selectAll<SVGGElement, SimNode>("g.node")
@@ -284,6 +481,37 @@ export default function IdeasGraphView() {
 
     const nodeId = (n: string | SimNode) => (typeof n === "string" ? n : n.id);
 
+    const applySearchAppearance = () => {
+      const hasQuery = query.trim().length > 0;
+
+      nodeSel
+        .style("opacity", (d) => {
+          if (!hasQuery) return 1;
+          return d.searchMatch ? 1 : 0.14;
+        })
+        .style("filter", (d) => {
+          if (hasQuery && d.searchMatch) {
+            return "drop-shadow(0 0 10px rgba(255,255,255,0.75))";
+          }
+
+          if (d.nodeKind === "tag") return "none";
+
+          return ideaGlow(getIdeaType(d as IdeaNode));
+        });
+
+      linkSel.style("opacity", (l) => {
+        if (!hasQuery) return 1;
+
+        const sourceId = nodeId(l.source);
+        const targetId = nodeId(l.target);
+
+        const sourceNode = nodes.find((n) => n.id === sourceId);
+        const targetNode = nodes.find((n) => n.id === targetId);
+
+        return sourceNode?.searchMatch || targetNode?.searchMatch ? 0.85 : 0.04;
+      });
+    };
+
     const applyHoverHighlight = (focus: SimNode) => {
       const focusId = focus.id;
       const neighborIds = new Set<string>([focusId]);
@@ -292,6 +520,7 @@ export default function IdeasGraphView() {
       for (const l of visibleLinks) {
         const s = nodeId(l.source);
         const t = nodeId(l.target);
+
         if (s === focusId || t === focusId) {
           neighborIds.add(s);
           neighborIds.add(t);
@@ -312,11 +541,9 @@ export default function IdeasGraphView() {
     };
 
     const clearHoverHighlight = () => {
-      nodeSel.style("opacity", 1);
-      linkSel
-        .style("opacity", 1)
-        .attr("stroke", "rgba(255,255,255,0.10)")
-        .attr("stroke-width", 1);
+      applySearchAppearance();
+
+      linkSel.attr("stroke", "rgba(255,255,255,0.10)").attr("stroke-width", 1);
     };
 
     nodeSel
@@ -325,14 +552,18 @@ export default function IdeasGraphView() {
         setSelected(d);
       })
       .on("mouseenter", (event, d) => {
+        hoveredNodeId = d.id;
         applyHoverHighlight(d);
+        updateLabelVisibility(currentZoomScale);
         showTooltip(event as MouseEvent, d);
       })
       .on("mousemove", (event, d) => {
         moveTooltip(event as MouseEvent, d);
       })
       .on("mouseleave", () => {
+        hoveredNodeId = null;
         clearHoverHighlight();
+        updateLabelVisibility(currentZoomScale);
         hideTooltip();
       });
 
@@ -342,21 +573,24 @@ export default function IdeasGraphView() {
       .attr("fill", (d) =>
         d.nodeKind === "tag"
           ? "rgba(255,255,255,0.12)"
-          : ideaFill((d as IdeaNode).type),
+          : ideaFill(getIdeaType(d as IdeaNode)),
       )
       .attr("stroke", (d) =>
         d.nodeKind === "tag"
           ? "rgba(255,255,255,0.35)"
-          : ideaStroke((d as IdeaNode).type),
+          : ideaStroke(getIdeaType(d as IdeaNode)),
       )
       .attr("stroke-width", (d) => (d.nodeKind === "tag" ? 1.2 : 2))
       .style("filter", (d) =>
-        d.nodeKind === "tag" ? "none" : ideaGlow((d as IdeaNode).type),
+        d.nodeKind === "tag" ? "none" : ideaGlow(getIdeaType(d as IdeaNode)),
       );
 
     nodeSel
       .append("text")
-      .text((d) => d.label)
+      .attr("class", "node-label")
+      .text((d) =>
+        d.nodeKind === "tag" ? d.label : truncateLabel(d.label, 18),
+      )
       .attr("x", (d) => (d.nodeKind === "tag" ? 10 : 14))
       .attr("y", 4)
       .attr("fill", (d) =>
@@ -364,21 +598,27 @@ export default function IdeasGraphView() {
           ? "rgba(255,255,255,0.8)"
           : "rgba(255,255,255,0.92)",
       )
-      .attr("font-size", (d) => (d.nodeKind === "tag" ? 8 : 20))
+      .attr("font-size", (d) => (d.nodeKind === "tag" ? 8 : 14))
       .attr(
         "font-family",
         "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
       )
       .attr("paint-order", "stroke")
       .attr("stroke", "rgba(0,0,0,0.65)")
-      .attr("stroke-width", 3);
+      .attr("stroke-width", 3)
+      .style("opacity", (d) => (d.nodeKind === "tag" ? 0 : 0.78))
+      .style("pointer-events", "none");
+
+    updateLabelVisibility(DEFAULT_ZOOM_SCALE);
 
     const drag: d3.DragBehavior<SVGGElement, SimNode, DragSubject> = d3
       .drag<SVGGElement, SimNode>()
       .on("start", (event, d) => {
         hideTooltip();
         clearHoverHighlight();
+
         if (!event.active) sim.alphaTarget(0.2).restart();
+
         d.fx = d.x;
         d.fy = d.y;
       })
@@ -386,24 +626,42 @@ export default function IdeasGraphView() {
         d.fx = event.x;
         d.fy = event.y;
       })
-      .on("end", (event) => {
+      .on("end", (event, d) => {
         if (!event.active) sim.alphaTarget(0);
+
+        d.fx = null;
+        d.fy = null;
       });
 
     nodeSel.call(drag);
+
+    let hasAppliedInitialZoom = false;
 
     const resize = () => {
       const rect = container.getBoundingClientRect();
       const width = Math.max(300, rect.width);
       const height = Math.max(300, rect.height);
+
       svg.attr("width", width).attr("height", height);
+
       sim.force("center", d3.forceCenter(width / 2, height / 2));
       sim.alpha(0.6).restart();
+
+      if (!hasAppliedInitialZoom) {
+        hasAppliedInitialZoom = true;
+
+        svg
+          .transition()
+          .duration(0)
+          .call(zoom.transform, getDefaultZoomTransform());
+      }
     };
 
     const ro = new ResizeObserver(resize);
     ro.observe(container);
     resize();
+
+    applySearchAppearance();
 
     sim.on("tick", () => {
       linkSel
@@ -416,17 +674,21 @@ export default function IdeasGraphView() {
     });
 
     return () => {
+      resetZoomRef.current = null;
       ro.disconnect();
       sim.stop();
       tooltip.remove();
     };
-  }, [nodes, links]);
+  }, [nodes, links, query]);
 
   const panel = useMemo(() => {
     if (!selected) return null;
     if (selected.nodeKind === "tag") return null;
+
     const idea = selected as IdeaNode & { nodeKind: "idea" };
-    if (idea.type !== "concept" && idea.type !== "resource") return null;
+    const ideaType = getIdeaType(idea);
+
+    if (ideaType !== "concept" && ideaType !== "resource") return null;
 
     return {
       title: idea.label,
@@ -452,6 +714,294 @@ export default function IdeasGraphView() {
         <svg ref={svgRef} style={{ display: "block" }} />
       </div>
 
+      <section
+        style={{
+          position: "fixed",
+          top: 16,
+          left: 16,
+          width: 310,
+          maxHeight: "calc(100vh - 32px)",
+          overflow: "visible",
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.15)",
+          background: "rgba(0,0,0,0.35)",
+          backdropFilter: "blur(6px)",
+          padding: 16,
+          boxSizing: "border-box",
+          fontFamily:
+            "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+          color: "white",
+          zIndex: 30,
+        }}
+      >
+        <div
+          style={{
+            maxHeight: "calc(100vh - 64px)",
+            overflow: "visible",
+          }}
+        >
+          <div style={{ fontSize: 18, fontWeight: 800, marginBottom: 12 }}>
+            Graph Controls
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 12,
+              opacity: 0.8,
+              marginBottom: 6,
+            }}
+          >
+            Search
+          </label>
+
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search ideas, tags, descriptions..."
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              padding: "10px 12px",
+              marginBottom: 14,
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.18)",
+              background: "rgba(255,255,255,0.08)",
+              color: "white",
+              outline: "none",
+            }}
+          />
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 12,
+              opacity: 0.8,
+              marginBottom: 6,
+            }}
+          >
+            Tag filter
+          </label>
+
+          <div
+            ref={tagDropdownRef}
+            style={{
+              position: "relative",
+              marginBottom: 14,
+            }}
+          >
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isTagDropdownOpen}
+              onClick={() => setIsTagDropdownOpen((prev) => !prev)}
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.18)",
+                background: "rgba(20,20,20,0.95)",
+                color: "white",
+                outline: "none",
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 10,
+                textAlign: "left",
+              }}
+            >
+              <span
+                style={{
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {selectedTagLabel}
+              </span>
+
+              <span
+                style={{
+                  opacity: 0.75,
+                  transform: isTagDropdownOpen
+                    ? "rotate(180deg)"
+                    : "rotate(0deg)",
+                  transition: "transform 150ms ease",
+                }}
+              >
+                ▾
+              </span>
+            </button>
+
+            {isTagDropdownOpen ? (
+              <div
+                role="listbox"
+                aria-label="Tag filter"
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  left: 0,
+                  right: 0,
+                  maxHeight:
+                    TAG_DROPDOWN_ROW_HEIGHT * TAG_DROPDOWN_VISIBLE_ROWS,
+                  overflowY: "auto",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  background: "rgba(20,20,20,0.98)",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+                  zIndex: 100,
+                }}
+              >
+                {["all", ...allTags].map((tag) => {
+                  const label = tag === "all" ? "All tags" : tag;
+                  const isSelected = selectedTag === tag;
+                  const isHovered = hoveredTag === tag;
+
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      role="option"
+                      aria-selected={isSelected}
+                      onMouseEnter={() => setHoveredTag(tag)}
+                      onMouseLeave={() => setHoveredTag(null)}
+                      onFocus={() => setHoveredTag(tag)}
+                      onBlur={() => setHoveredTag(null)}
+                      onClick={() => {
+                        setSelectedTag(tag);
+                        setIsTagDropdownOpen(false);
+                        setHoveredTag(null);
+                      }}
+                      style={{
+                        width: "100%",
+                        minHeight: TAG_DROPDOWN_ROW_HEIGHT,
+                        padding: "9px 12px",
+                        border: "none",
+                        borderBottom: "1px solid rgba(255,255,255,0.07)",
+                        background: isHovered
+                          ? "rgba(255,255,255,0.22)"
+                          : isSelected
+                            ? "rgba(255,255,255,0.14)"
+                            : "transparent",
+                        color: "white",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        fontWeight: isSelected ? 800 : 500,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <div
+            style={{
+              fontSize: 12,
+              opacity: 0.8,
+              marginBottom: 8,
+            }}
+          >
+            Idea types
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              marginBottom: 14,
+            }}
+          >
+            {(["concept", "resource", "person", "location"] as IdeaType[]).map(
+              (type) => (
+                <label
+                  key={type}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 13,
+                    opacity: visibleTypes[type] ? 1 : 0.5,
+                    textTransform: "capitalize",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={visibleTypes[type]}
+                    onChange={() => toggleType(type)}
+                  />
+                  {type}
+                </label>
+              ),
+            )}
+          </div>
+
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 13,
+              marginBottom: 14,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showTags}
+              onChange={() => setShowTags((prev) => !prev)}
+            />
+            Show tag nodes
+          </label>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              onClick={resetView}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.08)",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              Reset view
+            </button>
+
+            <button
+              type="button"
+              onClick={resetControls}
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                borderRadius: 12,
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.08)",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: 700,
+              }}
+            >
+              Reset controls
+            </button>
+          </div>
+        </div>
+      </section>
+
       <aside
         style={{
           position: "fixed",
@@ -469,6 +1019,7 @@ export default function IdeasGraphView() {
           fontFamily:
             "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
           color: "white",
+          zIndex: 20,
         }}
       >
         {panel ? (
@@ -476,6 +1027,7 @@ export default function IdeasGraphView() {
             <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>
               {panel.title}
             </div>
+
             <div
               style={{
                 opacity: 0.92,
@@ -485,6 +1037,32 @@ export default function IdeasGraphView() {
             >
               {panel.description}
             </div>
+
+            {panel.tags.length > 0 ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 6,
+                }}
+              >
+                {panel.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    style={{
+                      display: "inline-block",
+                      padding: "5px 8px",
+                      borderRadius: 999,
+                      border: "1px solid rgba(255,255,255,0.16)",
+                      background: "rgba(255,255,255,0.07)",
+                      fontSize: 12,
+                    }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             {panel.url ? (
               <a
@@ -499,7 +1077,7 @@ export default function IdeasGraphView() {
                   background: "rgba(255,255,255,0.06)",
                   color: "white",
                   textDecoration: "none",
-                  marginBottom: 14,
+                  marginTop: 12,
                 }}
               >
                 Open link ↗
@@ -508,9 +1086,15 @@ export default function IdeasGraphView() {
           </>
         ) : (
           <div style={{ opacity: 0.85, lineHeight: 1.5 }}>
-            Explore the graph by hovering over concept and resource nodes to
-            preview descriptions, clicking any to see full details in the right
-            panel.
+            <p style={{ margin: 0 }}>
+              Use the controls on the left to search ideas, filter by tag,
+              choose which node types are visible and more.{" "}
+            </p>
+            <p style={{ marginTop: 12, marginBottom: 0 }}>
+              Hover over nodes to highlight their connections. Hover over
+              colorful nodes for a preview, then click one to open its full
+              details here.
+            </p>
           </div>
         )}
       </aside>
