@@ -50,6 +50,11 @@ const FULL_IDEA_LABEL_ZOOM_THRESHOLD = 0.85;
 const TAG_DROPDOWN_ROW_HEIGHT = 38;
 const TAG_DROPDOWN_VISIBLE_ROWS = 10;
 
+const UI_PANEL_WIDTH = 360;
+const MINI_MAP_WIDTH = UI_PANEL_WIDTH;
+const MINI_MAP_HEIGHT = 170;
+const MINI_MAP_PADDING = 16;
+
 const getIdeaType = (idea: IdeaNode): IdeaType => idea.type ?? "location";
 
 const truncateLabel = (label: string, maxLength = 26) => {
@@ -60,6 +65,7 @@ const truncateLabel = (label: string, maxLength = 26) => {
 export default function IdeasGraphView() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const miniMapSvgRef = useRef<SVGSVGElement | null>(null);
   const resetZoomRef = useRef<(() => void) | null>(null);
   const tagDropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -295,15 +301,24 @@ export default function IdeasGraphView() {
   useEffect(() => {
     const container = containerRef.current;
     const svgEl = svgRef.current;
-    if (!container || !svgEl) return;
+    const miniMapSvgEl = miniMapSvgRef.current;
 
-    const svg = d3.select(svgEl);
+    if (!container || !svgEl || !miniMapSvgEl) return;
+
+    const graphContainer = container;
+    const mainSvgEl = svgEl;
+    const miniSvgEl = miniMapSvgEl;
+
+    const svg = d3.select(mainSvgEl);
     svg.selectAll("*").remove();
 
-    d3.select(container).selectAll("div.hover-tooltip").remove();
+    const miniMapSvg = d3.select(miniSvgEl);
+    miniMapSvg.selectAll("*").remove();
+
+    d3.select(graphContainer).selectAll("div.hover-tooltip").remove();
 
     const tooltip = d3
-      .select(container)
+      .select(graphContainer)
       .append("div")
       .attr("class", "hover-tooltip")
       .style("position", "absolute")
@@ -334,7 +349,7 @@ export default function IdeasGraphView() {
       const t = getIdeaType(d as IdeaNode);
       if (t !== "concept" && t !== "resource") return;
 
-      const rect = container.getBoundingClientRect();
+      const rect = graphContainer.getBoundingClientRect();
       const x = event.clientX - rect.left + 14;
       const y = event.clientY - rect.top + 14;
 
@@ -353,7 +368,7 @@ export default function IdeasGraphView() {
       const t = getIdeaType(d as IdeaNode);
       if (t !== "concept" && t !== "resource") return;
 
-      const rect = container.getBoundingClientRect();
+      const rect = graphContainer.getBoundingClientRect();
       const x = event.clientX - rect.left + 14;
       const y = event.clientY - rect.top + 14;
 
@@ -370,7 +385,21 @@ export default function IdeasGraphView() {
     const linkLayer = gRoot.append("g").attr("class", "links");
     const nodeLayer = gRoot.append("g").attr("class", "nodes");
 
+    const miniMapLinkLayer = miniMapSvg.append("g").attr("class", "mini-links");
+    const miniMapNodeLayer = miniMapSvg.append("g").attr("class", "mini-nodes");
+
+    const miniMapViewport = miniMapSvg
+      .append("rect")
+      .attr("class", "mini-viewport")
+      .attr("fill", "rgba(255,255,255,0.08)")
+      .attr("stroke", "rgba(255,255,255,0.78)")
+      .attr("stroke-width", 1.4)
+      .attr("rx", 6)
+      .attr("ry", 6)
+      .style("pointer-events", "none");
+
     let currentZoomScale = DEFAULT_ZOOM_SCALE;
+    let currentTransform = getDefaultZoomTransform();
     let hoveredNodeId: string | null = null;
 
     const updateLabelVisibility = (zoomScale: number) => {
@@ -409,14 +438,16 @@ export default function IdeasGraphView() {
       .zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.25, 3])
       .on("zoom", (event) => {
+        currentTransform = event.transform;
         gRoot.attr("transform", event.transform.toString());
         updateLabelVisibility(event.transform.k);
+        updateMiniMap();
       });
 
     svg.call(zoom);
 
-    const getDefaultZoomTransform = () => {
-      const rect = container.getBoundingClientRect();
+    function getDefaultZoomTransform() {
+      const rect = graphContainer.getBoundingClientRect();
       const width = Math.max(300, rect.width);
       const height = Math.max(300, rect.height);
 
@@ -426,7 +457,7 @@ export default function IdeasGraphView() {
           (height * (1 - DEFAULT_ZOOM_SCALE)) / 2,
         )
         .scale(DEFAULT_ZOOM_SCALE);
-    };
+    }
 
     resetZoomRef.current = () => {
       svg
@@ -479,7 +510,166 @@ export default function IdeasGraphView() {
       .attr("class", "node")
       .style("cursor", (d) => (isClickableIdea(d) ? "pointer" : "default"));
 
+    const miniMapLinkSel = miniMapLinkLayer
+      .selectAll<SVGLineElement, LinkDatum>("line.mini-link")
+      .data(visibleLinks, (d) => d.id)
+      .join("line")
+      .attr("class", "mini-link")
+      .attr("stroke", "rgba(255,255,255,0.16)")
+      .attr("stroke-width", 0.7)
+      .attr("stroke-linecap", "round");
+
+    const miniMapNodeSel = miniMapNodeLayer
+      .selectAll<SVGCircleElement, SimNode>("circle.mini-node")
+      .data(nodes, (d) => d.id)
+      .join("circle")
+      .attr("class", "mini-node")
+      .attr("r", (d) => (d.nodeKind === "tag" ? 1.5 : 2.6))
+      .attr("fill", (d) =>
+        d.nodeKind === "tag"
+          ? "rgba(255,255,255,0.42)"
+          : ideaFill(getIdeaType(d as IdeaNode)),
+      )
+      .attr("stroke", (d) =>
+        d.nodeKind === "tag"
+          ? "rgba(255,255,255,0.25)"
+          : ideaStroke(getIdeaType(d as IdeaNode)),
+      )
+      .attr("stroke-width", 0.5);
+
     const nodeId = (n: string | SimNode) => (typeof n === "string" ? n : n.id);
+
+    const getMiniMapProjection = () => {
+      const positionedNodes = nodes.filter(
+        (n) =>
+          Number.isFinite(n.x) &&
+          Number.isFinite(n.y) &&
+          typeof n.x === "number" &&
+          typeof n.y === "number",
+      );
+
+      if (positionedNodes.length === 0) return null;
+
+      const minX = d3.min(positionedNodes, (d) => d.x ?? 0) ?? 0;
+      const maxX = d3.max(positionedNodes, (d) => d.x ?? 0) ?? 1;
+      const minY = d3.min(positionedNodes, (d) => d.y ?? 0) ?? 0;
+      const maxY = d3.max(positionedNodes, (d) => d.y ?? 0) ?? 1;
+
+      const graphWidth = Math.max(1, maxX - minX);
+      const graphHeight = Math.max(1, maxY - minY);
+
+      const availableWidth = MINI_MAP_WIDTH - MINI_MAP_PADDING * 2;
+      const availableHeight = MINI_MAP_HEIGHT - MINI_MAP_PADDING * 2;
+
+      const scale = Math.min(
+        availableWidth / graphWidth,
+        availableHeight / graphHeight,
+      );
+
+      const offsetX = (MINI_MAP_WIDTH - graphWidth * scale) / 2;
+      const offsetY = (MINI_MAP_HEIGHT - graphHeight * scale) / 2;
+
+      const mapX = (x: number) => offsetX + (x - minX) * scale;
+      const mapY = (y: number) => offsetY + (y - minY) * scale;
+
+      const invertX = (x: number) => (x - offsetX) / scale + minX;
+      const invertY = (y: number) => (y - offsetY) / scale + minY;
+
+      return {
+        mapX,
+        mapY,
+        invertX,
+        invertY,
+      };
+    };
+
+    function updateMiniMap() {
+      const projection = getMiniMapProjection();
+
+      if (!projection) {
+        miniMapViewport.style("opacity", "0");
+        return;
+      }
+
+      const { mapX, mapY } = projection;
+
+      miniMapLinkSel
+        .attr("x1", (d) => mapX((d.source as SimNode).x ?? 0))
+        .attr("y1", (d) => mapY((d.source as SimNode).y ?? 0))
+        .attr("x2", (d) => mapX((d.target as SimNode).x ?? 0))
+        .attr("y2", (d) => mapY((d.target as SimNode).y ?? 0))
+        .style("opacity", (l) => {
+          const hasQuery = query.trim().length > 0;
+
+          if (!hasQuery) return 1;
+
+          const sourceId = nodeId(l.source);
+          const targetId = nodeId(l.target);
+
+          const sourceNode = nodes.find((n) => n.id === sourceId);
+          const targetNode = nodes.find((n) => n.id === targetId);
+
+          return sourceNode?.searchMatch || targetNode?.searchMatch ? 0.9 : 0.1;
+        });
+
+      miniMapNodeSel
+        .attr("cx", (d) => mapX(d.x ?? 0))
+        .attr("cy", (d) => mapY(d.y ?? 0))
+        .style("opacity", (d) => {
+          const hasQuery = query.trim().length > 0;
+
+          if (!hasQuery) return d.nodeKind === "tag" ? 0.65 : 1;
+
+          return d.searchMatch ? 1 : 0.18;
+        });
+
+      const rect = graphContainer.getBoundingClientRect();
+      const width = Math.max(300, rect.width);
+      const height = Math.max(300, rect.height);
+
+      const viewX0 = (0 - currentTransform.x) / currentTransform.k;
+      const viewY0 = (0 - currentTransform.y) / currentTransform.k;
+      const viewX1 = (width - currentTransform.x) / currentTransform.k;
+      const viewY1 = (height - currentTransform.y) / currentTransform.k;
+
+      const miniX0 = mapX(viewX0);
+      const miniY0 = mapY(viewY0);
+      const miniX1 = mapX(viewX1);
+      const miniY1 = mapY(viewY1);
+
+      miniMapViewport
+        .style("opacity", "1")
+        .attr("x", Math.min(miniX0, miniX1))
+        .attr("y", Math.min(miniY0, miniY1))
+        .attr("width", Math.abs(miniX1 - miniX0))
+        .attr("height", Math.abs(miniY1 - miniY0));
+    }
+
+    miniMapSvg
+      .attr("viewBox", `0 0 ${MINI_MAP_WIDTH} ${MINI_MAP_HEIGHT}`)
+      .style("cursor", "crosshair")
+      .on("click", (event: MouseEvent) => {
+        const projection = getMiniMapProjection();
+
+        if (!projection) return;
+
+        const [miniX, miniY] = d3.pointer(event, miniSvgEl);
+        const graphX = projection.invertX(miniX);
+        const graphY = projection.invertY(miniY);
+
+        const rect = graphContainer.getBoundingClientRect();
+        const width = Math.max(300, rect.width);
+        const height = Math.max(300, rect.height);
+
+        const nextTransform = d3.zoomIdentity
+          .translate(
+            width / 2 - graphX * currentTransform.k,
+            height / 2 - graphY * currentTransform.k,
+          )
+          .scale(currentTransform.k);
+
+        svg.transition().duration(400).call(zoom.transform, nextTransform);
+      });
 
     const applySearchAppearance = () => {
       const hasQuery = query.trim().length > 0;
@@ -510,6 +700,8 @@ export default function IdeasGraphView() {
 
         return sourceNode?.searchMatch || targetNode?.searchMatch ? 0.85 : 0.04;
       });
+
+      updateMiniMap();
     };
 
     const applyHoverHighlight = (focus: SimNode) => {
@@ -638,7 +830,7 @@ export default function IdeasGraphView() {
     let hasAppliedInitialZoom = false;
 
     const resize = () => {
-      const rect = container.getBoundingClientRect();
+      const rect = graphContainer.getBoundingClientRect();
       const width = Math.max(300, rect.width);
       const height = Math.max(300, rect.height);
 
@@ -655,10 +847,12 @@ export default function IdeasGraphView() {
           .duration(0)
           .call(zoom.transform, getDefaultZoomTransform());
       }
+
+      updateMiniMap();
     };
 
     const ro = new ResizeObserver(resize);
-    ro.observe(container);
+    ro.observe(graphContainer);
     resize();
 
     applySearchAppearance();
@@ -671,6 +865,8 @@ export default function IdeasGraphView() {
         .attr("y2", (d) => (d.target as SimNode).y ?? 0);
 
       nodeSel.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
+
+      updateMiniMap();
     });
 
     return () => {
@@ -678,6 +874,7 @@ export default function IdeasGraphView() {
       ro.disconnect();
       sim.stop();
       tooltip.remove();
+      miniMapSvg.on("click", null);
     };
   }, [nodes, links, query]);
 
@@ -719,7 +916,7 @@ export default function IdeasGraphView() {
           position: "fixed",
           top: 16,
           left: 16,
-          width: 310,
+          width: UI_PANEL_WIDTH,
           maxHeight: "calc(100vh - 32px)",
           overflow: "visible",
           borderRadius: 16,
@@ -1007,7 +1204,7 @@ export default function IdeasGraphView() {
           position: "fixed",
           top: 16,
           right: 16,
-          width: 360,
+          width: UI_PANEL_WIDTH,
           maxHeight: "calc(100vh - 32px)",
           overflow: "auto",
           borderRadius: 16,
@@ -1098,6 +1295,35 @@ export default function IdeasGraphView() {
           </div>
         )}
       </aside>
+
+      <div
+        aria-label="Graph mini-map"
+        style={{
+          position: "fixed",
+          right: 16,
+          bottom: 16,
+          width: MINI_MAP_WIDTH,
+          height: MINI_MAP_HEIGHT,
+          borderRadius: 16,
+          border: "1px solid rgba(255,255,255,0.16)",
+          background: "rgba(0,0,0,0.42)",
+          backdropFilter: "blur(8px)",
+          boxShadow: "0 18px 45px rgba(0,0,0,0.38)",
+          overflow: "hidden",
+          zIndex: 45,
+        }}
+      >
+        <svg
+          ref={miniMapSvgRef}
+          width={MINI_MAP_WIDTH}
+          height={MINI_MAP_HEIGHT}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "100%",
+          }}
+        />
+      </div>
     </div>
   );
 }
